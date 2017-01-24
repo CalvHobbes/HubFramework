@@ -115,7 +115,12 @@ class SearchBarComponent: NSObject, HUBComponentActionPerformer, UISearchBarDele
         debounceTimer?.invalidate()
         
         if actionDelay > 0 {
-            self.debounceTimer = Timer.scheduledTimer(withTimeInterval: actionDelay, repeats: false) { (_) in
+            if #available(iOS 10.0, *) {
+                self.debounceTimer = Timer.scheduledTimer(withTimeInterval: actionDelay, repeats: false) { (_) in
+                    actionClosure()
+                }
+            } else {
+                // Fallback on earlier versions
                 actionClosure()
             }
         } else {

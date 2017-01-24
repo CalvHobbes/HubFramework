@@ -16,6 +16,8 @@
 		52E7FC661D9C78700053EECF /* HUBActionFactoryMock.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A6525321D802DCD007B1A15 /* HUBActionFactoryMock.m */; };
 		52E7FC671D9C78730053EECF /* HUBActionMock.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A6525351D802E3F007B1A15 /* HUBActionMock.m */; };
 		52E7FC691D9C787E0053EECF /* HUBURLProtocolMock.m in Sources */ = {isa = PBXBuildFile; fileRef = F6B6B7551D9A8E7E0000D7AF /* HUBURLProtocolMock.m */; };
+		5FABC6AE1E37918000C9AAE7 /* HUBContentOperationAppendInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = 5FF27E521E372FA500D7F558 /* HUBContentOperationAppendInfo.h */; };
+		5FABC6AF1E37918500C9AAE7 /* HUBContentOperationAppendInfo.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FF27E531E3731A000D7F558 /* HUBContentOperationAppendInfo.m */; };
 		5FF27E541E3731A000D7F558 /* HUBContentOperationAppendInfo.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FF27E531E3731A000D7F558 /* HUBContentOperationAppendInfo.m */; };
 		650056201DF98B89006D957C /* HUBViewModelUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 6500561F1DF98B89006D957C /* HUBViewModelUtilities.m */; };
 		650056211DF98B89006D957C /* HUBViewModelUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 6500561F1DF98B89006D957C /* HUBViewModelUtilities.m */; };
@@ -1629,6 +1631,7 @@
 				8AE6C0891DF6E4020063B2B1 /* HUBViewModelImplementation.h in Headers */,
 				8AE6C0B01DF6E40D0063B2B1 /* HUBComponentImageDataImplementation.h in Headers */,
 				8AE6C06B1DF6E3F90063B2B1 /* HUBComponentImageDataJSONSchemaImplementation.h in Headers */,
+				5FABC6AE1E37918000C9AAE7 /* HUBContentOperationAppendInfo.h in Headers */,
 				8AE6C0731DF6E3F90063B2B1 /* HUBMutableJSONPathImplementation.h in Headers */,
 				8AE6C0221DF6E3C40063B2B1 /* HUBFeatureRegistry.h in Headers */,
 				8AE6C07D1DF6E4020063B2B1 /* HUBFeatureInfoImplementation.h in Headers */,
@@ -2053,6 +2056,7 @@
 				8AE6C0D21DF6E4140063B2B1 /* HUBActionHandlerWrapper.m in Sources */,
 				8AE6C09A1DF6E4020063B2B1 /* HUBCollectionView.m in Sources */,
 				8AE6C0921DF6E4020063B2B1 /* HUBViewModelBuilderImplementation.m in Sources */,
+				5FABC6AF1E37918500C9AAE7 /* HUBContentOperationAppendInfo.m in Sources */,
 				8AE6C0DA1DF6E4180063B2B1 /* HUBLiveContentOperation.m in Sources */,
 				8AE6C0AF1DF6E40D0063B2B1 /* HUBComponentModelBuilderShowcaseSnapshotGenerator.m in Sources */,
 				8AE6C0B11DF6E40D0063B2B1 /* HUBComponentImageDataImplementation.m in Sources */,
