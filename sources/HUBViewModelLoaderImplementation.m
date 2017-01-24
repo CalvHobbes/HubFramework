@@ -34,6 +34,8 @@
 #import "HUBViewModelImplementation.h"
 #import "HUBContentOperationWrapper.h"
 #import "HUBContentOperationExecutionInfo.h"
+#import "HUBContentOperationAppendInfo.h"
+#import "HUBContentOperation.h"
 #import "HUBUtilities.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -42,9 +44,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy, readonly) NSURL *viewURI;
 @property (nonatomic, strong, readonly) id<HUBFeatureInfo> featureInfo;
-@property (nonatomic, copy, readonly) NSArray<id<HUBContentOperation>> *contentOperations;
+@property (nonatomic, copy, readonly) NSMutableArray<id<HUBContentOperation>> *contentOperations;
 @property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *, HUBContentOperationWrapper *> *contentOperationWrappers;
 @property (nonatomic, strong, readonly) NSMutableArray<HUBContentOperationExecutionInfo *> *contentOperationQueue;
+
+@property (nonatomic, strong, readonly) NSMutableArray<HUBContentOperationAppendInfo *> *contentOperationAppendQueue;
 @property (nonatomic, strong, nullable, readonly) id<HUBContentReloadPolicy> contentReloadPolicy;
 @property (nonatomic, strong, readonly) id<HUBJSONSchema> JSONSchema;
 @property (nonatomic, strong, readonly) HUBComponentDefaults *componentDefaults;
@@ -53,7 +57,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable, readonly) id<HUBIconImageResolver> iconImageResolver;
 @property (nonatomic, strong, nullable) id<HUBViewModel> cachedInitialViewModel;
 @property (nonatomic, strong, nullable) id<HUBViewModel> previouslyLoadedViewModel;
-@property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *, HUBViewModelBuilderImplementation *> *builderSnapshots;
+@property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *,
+HUBViewModelBuilderImplementation *> *builderSnapshots;
 @property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *, NSError *> *errorSnapshots;
 @property (nonatomic, strong, nullable) HUBViewModelBuilderImplementation *currentBuilder;
 @property (nonatomic, assign) BOOL anyContentOperationSupportsPagination;
@@ -92,6 +97,7 @@ NS_ASSUME_NONNULL_BEGIN
         _contentOperations = [contentOperations copy];
         _contentOperationWrappers = [NSMutableDictionary new];
         _contentOperationQueue = [NSMutableArray new];
+        _contentOperationAppendQueue = [NSMutableArray new];
         _contentReloadPolicy = contentReloadPolicy;
         _JSONSchema = JSONSchema;
         _componentDefaults = componentDefaults;
@@ -205,6 +211,159 @@ NS_ASSUME_NONNULL_BEGIN
     [self scheduleContentOperationsFromIndex:0 executionMode:HUBContentOperationExecutionModePagination];
 }
 
+- (void)appendOperations
+
+{
+    if (self.contentOperationAppendQueue.count == 0) {
+        
+        return;
+    }
+    
+    //sort the array in descending order of operation index so that we can shift the
+    // original indexes accurately
+    
+    NSArray *sortedArray;
+    sortedArray = [self.contentOperationAppendQueue sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+        NSUInteger first = [(HUBContentOperationAppendInfo*)a contentOperationIndex];
+        NSUInteger second = [(HUBContentOperationAppendInfo*)b contentOperationIndex];
+        if (first > second){
+           return (NSComparisonResult)NSOrderedAscending;
+        }
+        else {
+            return (NSComparisonResult)NSOrderedDescending;
+        }
+    }];
+    
+    NSUInteger minIndex = ((HUBContentOperationAppendInfo*)sortedArray.lastObject).contentOperationIndex;
+    
+    for (HUBContentOperationAppendInfo* appendInfo in sortedArray) {
+        
+        NSUInteger newOperationCount = appendInfo.contentOperations.count;
+        
+        if (newOperationCount < 1){
+            
+            continue;
+        }
+        
+        NSUInteger operationIndex = appendInfo.contentOperationIndex;
+        
+        NSIndexSet *indexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(operationIndex + 1, operationIndex + newOperationCount)];
+
+        // set action performer for each operation
+        
+        for (id<HUBContentOperation> const operation in appendInfo.contentOperations) {
+            if (![operation conformsToProtocol:@protocol(HUBContentOperationActionPerformer)]) {
+                continue;
+            }
+            
+            ((id<HUBContentOperationActionPerformer>)operation).actionPerformer = self.actionPerformer;
+        }
+        
+        // insert new operations
+        [self.contentOperations insertObjects:appendInfo.contentOperations atIndexes:indexSet];
+        
+        // now change the indexes for contentOperationWrappers
+        // get all the wrappers with an index > operationIndex
+        NSArray<HUBContentOperationWrapper*> *resultArray = [[self.contentOperationWrappers allValues] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self.index > %@", operationIndex]];
+       
+        NSArray<HUBContentOperationWrapper*> *sortedOperationWrapperArray;
+        sortedOperationWrapperArray = [resultArray sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+            NSUInteger first = [(HUBContentOperationWrapper*)a index];
+            NSUInteger second = [(HUBContentOperationWrapper*)b index];
+            if (first > second){
+                return (NSComparisonResult)NSOrderedAscending;
+            }
+            else {
+                return (NSComparisonResult)NSOrderedDescending;
+            }
+        }];
+        
+        //change index and key in operationWrapper
+        
+        for (HUBContentOperationWrapper* operationWrapper in sortedOperationWrapperArray) {
+        
+            [self.contentOperationWrappers removeObjectForKey:@(operationWrapper.index)];
+            //TODO
+            
+            NSUInteger newIndex = operationWrapper.index+newOperationCount;
+            
+            [operationWrapper updateOperationIndex:newIndex];
+            
+            self.contentOperationWrappers[@(newIndex)] = operationWrapper;
+            
+        }
+        
+        // change key for builderSnapshots
+        // get all the builderSnapshots with an index > operationIndex
+        NSArray<NSNumber *> *filteredBuilderSnapshotKeys = [[self.builderSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %@", operationIndex]];
+        
+        NSArray<NSNumber *> *sortedBuilderSnapshotKeys;
+        sortedBuilderSnapshotKeys = [filteredBuilderSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+            NSNumber* first = (NSNumber*)a;
+            NSNumber* second = (NSNumber*)b;
+            if (first > second){
+                return (NSComparisonResult)NSOrderedAscending;
+            }
+            else {
+                return (NSComparisonResult)NSOrderedDescending;
+            }
+        }];
+        
+        
+        for (NSNumber *key in sortedBuilderSnapshotKeys) {
+            
+            NSUInteger keyValue = [key unsignedIntegerValue];
+            
+            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
+            
+            HUBViewModelBuilderImplementation * builder = self.builderSnapshots[key];
+            
+            self.builderSnapshots[index] = builder;
+            
+            [self.builderSnapshots removeObjectForKey:index];
+            
+            
+        }
+        
+        // change key for errorSnapshots
+        // get all the builderSnapshots with an index > operationIndex
+        NSArray<NSNumber *> *filteredErrorSnapshotKeys = [[self.errorSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %@", operationIndex]];
+        
+        NSArray<NSNumber *> *sortedErrorSnapshotKeys;
+        sortedErrorSnapshotKeys = [filteredErrorSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+            NSNumber* first = (NSNumber*)a;
+            NSNumber* second = (NSNumber*)b;
+            if (first > second){
+                return (NSComparisonResult)NSOrderedAscending;
+            }
+            else {
+                return (NSComparisonResult)NSOrderedDescending;
+            }
+        }];
+        
+        
+        for (NSNumber *key in sortedErrorSnapshotKeys) {
+            
+            NSUInteger keyValue = [key unsignedIntegerValue];
+            
+            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
+            
+            NSError * error = self.errorSnapshots[key];
+            
+            self.errorSnapshots[index] = error;
+            
+            [self.errorSnapshots removeObjectForKey:index];
+            
+        }
+        
+
+    }
+    
+    [self.contentOperationAppendQueue removeAllObjects];
+    [self scheduleContentOperationsFromIndex:minIndex+1 executionMode:HUBContentOperationExecutionModeMain];
+    
+}
+
 #pragma mark - HUBContentOperationWrapperDelegate
 
 - (void)contentOperationWrapperDidFinish:(HUBContentOperationWrapper *)operationWrapper
@@ -234,6 +393,23 @@ NS_ASSUME_NONNULL_BEGIN
     HUBPerformOnMainQueue(^{
         [self scheduleContentOperationsFromIndex:operationWrapper.index
                                    executionMode:HUBContentOperationExecutionModeMain];
+    });
+}
+
+- (void)contentOperationWrapperHasNewOperations:(HUBContentOperationWrapper *)operationWrapper operations:(NSArray<id<HUBContentOperation>> *)contentOperations {
+    
+    HUBContentOperationAppendInfo* appendInfo = [[HUBContentOperationAppendInfo alloc] initWithContentOperations:operationWrapper.index
+        contentOperations: contentOperations];
+    
+    
+    HUBPerformOnMainQueue(^{
+        [self.contentOperationAppendQueue addObject:appendInfo];
+        
+        if (!self.isLoading){
+            
+            [self appendOperations];
+        }
+       
     });
 }
 
@@ -376,6 +552,8 @@ NS_ASSUME_NONNULL_BEGIN
     id<HUBViewModel> const viewModel = [self.currentBuilder build];
     self.previouslyLoadedViewModel = viewModel;
     [delegate viewModelLoader:self didLoadViewModel:viewModel];
+    
+    [self appendOperations];
 }
 
 - (HUBContentOperationWrapper *)getOrCreateWrapperForContentOperationAtIndex:(NSUInteger)operationIndex

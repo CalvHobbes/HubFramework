@@ -26,6 +26,8 @@
 
 @property (nonatomic, strong, readonly) id<HUBContentOperation> contentOperation;
 @property (nonatomic, assign) BOOL isExecuting;
+/// The index of the operation in the content loading chain
+@property (nonatomic, assign, readwrite) NSUInteger index;
 
 @end
 
@@ -81,6 +83,11 @@
                                previousError:previousError];
 }
 
+- (void) updateOperationIndex: (NSUInteger)index {
+    
+    self.index = index;
+}
+
 #pragma mark - HUBContentOperationDelegate
 
 - (void)contentOperationDidFinish:(id<HUBContentOperation>)operation
@@ -98,6 +105,11 @@
     [self.delegate contentOperationWrapperRequiresRescheduling:self];
 }
 
+- (void)contentOperationHasNewOperations:(id<HUBContentOperation>)operation operations:(NSArray<id<HUBContentOperation>> *)contentOperations
+{
+    [self.delegate contentOperationWrapperHasNewOperations:self operations:contentOperations];
+    
+}
 #pragma mark - Private utilities
 
 - (void)finishWithError:(nullable NSError *)error

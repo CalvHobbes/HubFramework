@@ -85,6 +85,13 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)contentOperationRequiresRescheduling:(id<HUBContentOperation>)operation;
 
+/**
+ *  Notify the the Hub Framework that the underlying operation requires new operations
+ *  to be appended after it
+ *  @param operation The operation that requires new operations
+ */
+- (void)contentOperationHasNewOperations:(id<HUBContentOperation>)operation operations:(NSArray<id<HUBContentOperation>> *)contentOperations;
+
 @end
 
 #pragma mark - HUBContentOperation

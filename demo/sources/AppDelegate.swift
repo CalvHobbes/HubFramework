@@ -50,6 +50,8 @@ import HubFramework
         window.rootViewController = navigationController
         window.makeKeyAndVisible()
         
+
+        
         registerDefaultComponentFactory()
         registerAndOpenRootFeature()
         registerGitHubSearchFeature()

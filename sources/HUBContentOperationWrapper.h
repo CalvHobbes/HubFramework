@@ -55,6 +55,13 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)contentOperationWrapperRequiresRescheduling:(HUBContentOperationWrapper *)operationWrapper;
 
+/**
+ *  Notify the operation wrapper's delegate that the underlying operation requires new operations
+ *  to be appended after it
+ *  @param operationWrapper The operation wrapper in question
+ */
+- (void)contentOperationWrapperHasNewOperations:(HUBContentOperationWrapper *)operationWrapper operations:(NSArray<id<HUBContentOperation>> *)contentOperations;
+
 @end
 
 /// Class wrapping a `HUBContentOperation`, adding additional data used interally in the Hub Framework.
@@ -92,6 +99,8 @@ NS_ASSUME_NONNULL_BEGIN
                   viewModelBuilder:(id<HUBViewModelBuilder>)viewModelBuilder
                          pageIndex:(nullable NSNumber *)pageIndex
                      previousError:(nullable NSError *)previousError;
+
+- (void) updateOperationIndex: (NSUInteger)index;
 
 @end
 
