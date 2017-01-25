@@ -44,7 +44,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy, readonly) NSURL *viewURI;
 @property (nonatomic, strong, readonly) id<HUBFeatureInfo> featureInfo;
-@property (nonatomic, copy, readonly) NSArray<id<HUBContentOperation>> *contentOperations;
+//TODO - should we leave property contentOperations as NSArray and/or leave it as readonly and only
+// use _contentOperations backing field in the implementation to manipulate this
+// array?
+@property (nonatomic, readwrite) NSMutableArray<id<HUBContentOperation>> *contentOperations;
 @property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *, HUBContentOperationWrapper *> *contentOperationWrappers;
 @property (nonatomic, strong, readonly) NSMutableArray<HUBContentOperationExecutionInfo *> *contentOperationQueue;
 
@@ -70,10 +73,14 @@ HUBViewModelBuilderImplementation *> *builderSnapshots;
 
 NSMutableArray<id<HUBContentOperation>> * _contentOperations;
 
-- (NSArray<id<HUBContentOperation>> *)contentOperations {
-    return [_contentOperations copy];
+- (NSMutableArray<id<HUBContentOperation>> *)contentOperations {
+    return _contentOperations;
 }
 
+-(void) setContentOperations:(NSMutableArray<id<HUBContentOperation>> *)contentOperations {
+    
+    _contentOperations = contentOperations;
+}
 @synthesize delegate = _delegate;
 
 
@@ -103,7 +110,7 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
         _viewURI = [viewURI copy];
         _featureInfo = featureInfo;
         
-        _contentOperations = [NSMutableArray arrayWithArray:contentOperations];
+        self.contentOperations = [NSMutableArray arrayWithArray:contentOperations];
         _contentOperationWrappers = [NSMutableDictionary new];
         _contentOperationQueue = [NSMutableArray new];
         _contentOperationAppendQueue = [NSMutableArray new];
