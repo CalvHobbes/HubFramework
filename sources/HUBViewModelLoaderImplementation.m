@@ -80,16 +80,6 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
     };
 
 
-//NSMutableArray<id<HUBContentOperation>> * _contentOperations;
-//
-//- (NSMutableArray<id<HUBContentOperation>> *)contentOperations {
-//    return _contentOperations;
-//}
-//
-//-(void) setContentOperations:(NSMutableArray<id<HUBContentOperation>> *)contentOperations {
-//    
-//    _contentOperations = contentOperations;
-//}
 @synthesize delegate = _delegate;
 
 
@@ -482,7 +472,11 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
         
         return sortedAppendInfo;
     }
-    
+
+/**
+ *  Sorts contentOperationWrappers in descending order of operation index
+ *
+ */
     - (NSArray<HUBContentOperationWrapper*>*) sortedOperationWrappers:(NSUInteger)afterIndex
     {
     
@@ -512,6 +506,10 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
     
     }
 
+/**
+ *  Add all operations dynamically added via contentOperationAppendQueue
+ *
+ */
 - (void)appendOperations
 
 {
@@ -561,21 +559,6 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
         }
         
         // now change the indexes for contentOperationWrappers
-        // get all the wrappers with an index > operationIndex
-//        NSArray<HUBContentOperationWrapper*> *resultArray = [[self.contentOperationWrappers allValues] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"index > %u", operationIndex]];
-//        
-//        NSArray<HUBContentOperationWrapper*> *sortedOperationWrapperArray;
-//        sortedOperationWrapperArray = [resultArray sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-//            NSUInteger first = [(HUBContentOperationWrapper*)a index];
-//            NSUInteger second = [(HUBContentOperationWrapper*)b index];
-//            if (first > second){
-//                return (NSComparisonResult)NSOrderedAscending;
-//            }
-//            else {
-//                return (NSComparisonResult)NSOrderedDescending;
-//            }
-//        }];
-        
         NSArray<HUBContentOperationWrapper*> *sortedOperationWrappers = [self sortedOperationWrappers:operationIndex];
         
         //change index and key in operationWrapper
@@ -595,78 +578,28 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
         // shift items for builderSnapshots
         [self shiftItemsFor:self.builderSnapshots fromIndex:operationIndex by:newOperationCount];
         
-//        // get all the builderSnapshots with an index > operationIndex
-//        NSArray<NSNumber *> *filteredBuilderSnapshotKeys = [[self.builderSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", operationIndex]];
-//        
-//        NSArray<NSNumber *> *sortedBuilderSnapshotKeys;
-//        sortedBuilderSnapshotKeys = [filteredBuilderSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-//            NSNumber* first = (NSNumber*)a;
-//            NSNumber* second = (NSNumber*)b;
-//            if (first > second){
-//                return (NSComparisonResult)NSOrderedAscending;
-//            }
-//            else {
-//                return (NSComparisonResult)NSOrderedDescending;
-//            }
-//        }];
-//        
-//        
-//        for (NSNumber *key in sortedBuilderSnapshotKeys) {
-//            
-//            NSUInteger keyValue = [key unsignedIntegerValue];
-//            
-//            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
-//            
-//            HUBViewModelBuilderImplementation * builder = self.builderSnapshots[key];
-//            
-//            self.builderSnapshots[index] = builder;
-//            
-//            [self.builderSnapshots removeObjectForKey:index];
-//            
-//            
-//        }
         
         // shift items for errorSnapshots
         [self shiftItemsFor:self.errorSnapshots fromIndex:operationIndex by:newOperationCount];
         
-//        // change key for errorSnapshots
-//        // get all the builderSnapshots with an index > operationIndex
-//        NSArray<NSNumber *> *filteredErrorSnapshotKeys = [[self.errorSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", operationIndex]];
-//        
-//        NSArray<NSNumber *> *sortedErrorSnapshotKeys;
-//        sortedErrorSnapshotKeys = [filteredErrorSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-//            NSNumber* first = (NSNumber*)a;
-//            NSNumber* second = (NSNumber*)b;
-//            if (first > second){
-//                return (NSComparisonResult)NSOrderedAscending;
-//            }
-//            else {
-//                return (NSComparisonResult)NSOrderedDescending;
-//            }
-//        }];
-//        
-//        
-//        for (NSNumber *key in sortedErrorSnapshotKeys) {
-//            
-//            NSUInteger keyValue = [key unsignedIntegerValue];
-//            
-//            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
-//            
-//            NSError * error = self.errorSnapshots[key];
-//            
-//            self.errorSnapshots[index] = error;
-//            
-//            [self.errorSnapshots removeObjectForKey:index];
-//            
-//        }
-        
-        
     }
     
     [self.contentOperationAppendQueue removeAllObjects];
+    
+    //start executing from the lowest operation index that added new operations
     [self scheduleContentOperationsFromIndex:minIndex executionMode:HUBContentOperationExecutionModeMain];
     
 }
+
+/**
+ * Shifts items in a dictionary by incrementing their original key value
+ in the dictionary by "count" value. This is done only for items that have
+ a key value > index value.
+ *
+ *  @param dictionary The dictionary to be modified
+ *  @param index Items are shifted only for a key value > index
+ *  @param count Incremental value to be added for each item that is shifted
+ */
 
     -(void)shiftItemsFor:(NSMutableDictionary *)dictionary fromIndex:(NSUInteger)index by:(NSUInteger)count {
         
@@ -676,17 +609,6 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
         
         NSArray<NSNumber *> *sortedKeys;
         sortedKeys = [filteredKeys sortedArrayUsingComparator: descendingKeyComparator];
-        
-//        sortedKeys = [filteredKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-//            NSNumber* first = (NSNumber*)a;
-//            NSNumber* second = (NSNumber*)b;
-//            if (first > second){
-//                return (NSComparisonResult)NSOrderedAscending;
-//            }
-//            else {
-//                return (NSComparisonResult)NSOrderedDescending;
-//            }
-//        }];
         
         
         for (NSNumber *key in sortedKeys) {
