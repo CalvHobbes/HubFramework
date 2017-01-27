@@ -100,6 +100,11 @@ NS_ASSUME_NONNULL_BEGIN
                          pageIndex:(nullable NSNumber *)pageIndex
                      previousError:(nullable NSError *)previousError;
 
+/**
+ *  Updates the index of the current operation wrapper instance
+ *
+ *  @param index New index for current operation wrapper
+ */
 - (void) updateOperationIndex: (NSUInteger)index;
 
 @end
