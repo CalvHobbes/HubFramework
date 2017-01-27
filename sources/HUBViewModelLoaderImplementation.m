@@ -553,7 +553,7 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
         else
         {
             
-            NSIndexSet *indexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(operationIndex + 1, operationIndex + newOperationCount)];
+            NSIndexSet *indexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(operationIndex + 1, newOperationCount)];
             
             
             // insert new operations
