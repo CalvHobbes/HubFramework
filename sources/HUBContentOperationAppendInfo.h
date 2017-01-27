@@ -26,7 +26,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- *  Info class used to describe a new content operation that should be appended 
+ *  Info class used to describe new content operations that should be appended 
  *  to the current content loading chain.
  *
  *  This class is used by `HUBViewModelLoaderImplementation` to determine which operations to append,
