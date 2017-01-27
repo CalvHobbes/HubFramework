@@ -57,8 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable, readonly) id<HUBIconImageResolver> iconImageResolver;
 @property (nonatomic, strong, nullable) id<HUBViewModel> cachedInitialViewModel;
 @property (nonatomic, strong, nullable) id<HUBViewModel> previouslyLoadedViewModel;
-@property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *,
-HUBViewModelBuilderImplementation *> *builderSnapshots;
+@property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *,HUBViewModelBuilderImplementation *> *builderSnapshots;
 @property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *, NSError *> *errorSnapshots;
 @property (nonatomic, strong, nullable) HUBViewModelBuilderImplementation *currentBuilder;
 @property (nonatomic, assign) BOOL anyContentOperationSupportsPagination;
