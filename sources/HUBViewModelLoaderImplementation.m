@@ -44,10 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy, readonly) NSURL *viewURI;
 @property (nonatomic, strong, readonly) id<HUBFeatureInfo> featureInfo;
-//TODO - should we leave property contentOperations as NSArray and/or leave it as readonly and only
-// use _contentOperations backing field in the implementation to manipulate this
-// array?
-@property (nonatomic, readwrite) NSMutableArray<id<HUBContentOperation>> *contentOperations;
+@property (nonatomic, readonly) NSMutableArray<id<HUBContentOperation>> *contentOperations;
 @property (nonatomic, strong, readonly) NSMutableDictionary<NSNumber *, HUBContentOperationWrapper *> *contentOperationWrappers;
 @property (nonatomic, strong, readonly) NSMutableArray<HUBContentOperationExecutionInfo *> *contentOperationQueue;
 
@@ -70,17 +67,29 @@ HUBViewModelBuilderImplementation *> *builderSnapshots;
 @end
 
 @implementation HUBViewModelLoaderImplementation
-
-NSMutableArray<id<HUBContentOperation>> * _contentOperations;
-
-- (NSMutableArray<id<HUBContentOperation>> *)contentOperations {
-    return _contentOperations;
-}
-
--(void) setContentOperations:(NSMutableArray<id<HUBContentOperation>> *)contentOperations {
     
-    _contentOperations = contentOperations;
-}
+static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
+        NSNumber* first = (NSNumber*)a;
+        NSNumber* second = (NSNumber*)b;
+        if (first > second){
+            return (NSComparisonResult)NSOrderedAscending;
+        }
+        else {
+            return (NSComparisonResult)NSOrderedDescending;
+        }
+    };
+
+
+//NSMutableArray<id<HUBContentOperation>> * _contentOperations;
+//
+//- (NSMutableArray<id<HUBContentOperation>> *)contentOperations {
+//    return _contentOperations;
+//}
+//
+//-(void) setContentOperations:(NSMutableArray<id<HUBContentOperation>> *)contentOperations {
+//    
+//    _contentOperations = contentOperations;
+//}
 @synthesize delegate = _delegate;
 
 
@@ -110,7 +119,7 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
         _viewURI = [viewURI copy];
         _featureInfo = featureInfo;
         
-        self.contentOperations = [NSMutableArray arrayWithArray:contentOperations];
+        _contentOperations = [NSMutableArray arrayWithArray:contentOperations];
         _contentOperationWrappers = [NSMutableDictionary new];
         _contentOperationQueue = [NSMutableArray new];
         _contentOperationAppendQueue = [NSMutableArray new];
@@ -156,13 +165,8 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
 {
     _actionPerformer = actionPerformer;
     
-    for (id<HUBContentOperation> const operation in self.contentOperations) {
-        if (![operation conformsToProtocol:@protocol(HUBContentOperationActionPerformer)]) {
-            continue;
-        }
-        
-        ((id<HUBContentOperationActionPerformer>)operation).actionPerformer = actionPerformer;
-    }
+    [self setActionPerformer:actionPerformer forOperations:self.contentOperations];
+
 }
 
 #pragma mark - HUBViewModelLoader
@@ -262,9 +266,8 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
 
 - (void)contentOperationWrapperHasNewOperations:(HUBContentOperationWrapper *)operationWrapper operations:(NSArray<id<HUBContentOperation>> *)contentOperations {
     
-    HUBContentOperationAppendInfo* appendInfo = [[HUBContentOperationAppendInfo alloc] initWithContentOperations:operationWrapper.index
-        contentOperations: contentOperations];
-    
+    HUBContentOperationAppendInfo* appendInfo =
+    [[HUBContentOperationAppendInfo alloc] initWithContentOperations:contentOperations forIndex:operationWrapper.index];
     
     HUBPerformOnMainQueue(^{
         [self.contentOperationAppendQueue addObject:appendInfo];
@@ -440,78 +443,61 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
     return newOperationWrapper;
 }
 
-- (void)appendOperations
-
-{
-    if (self.contentOperationAppendQueue.count == 0) {
-        
-        return;
-    }
+- (void)setActionPerformer:(nullable id<HUBActionPerformer>)actionPerformer forOperations:(NSArray<id<HUBContentOperation>> *)operations {
     
-    //sort the array in descending order of operation index so that we can shift the
-    // original indexes accurately
-    
-    NSArray *sortedArray;
-    if (self.contentOperationAppendQueue.count == 1) {
-        
-        sortedArray = self.contentOperationAppendQueue;
-    }
-    else {
-        sortedArray = [self.contentOperationAppendQueue sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-            NSUInteger first = [(HUBContentOperationAppendInfo*)a contentOperationIndex];
-            NSUInteger second = [(HUBContentOperationAppendInfo*)b contentOperationIndex];
-            if (first > second){
-                return (NSComparisonResult)NSOrderedAscending;
-            }
-            else {
-                return (NSComparisonResult)NSOrderedDescending;
-            }
-        }];
-    }
-    
-    NSUInteger minIndex = ((HUBContentOperationAppendInfo*)sortedArray.lastObject).contentOperationIndex;
-    
-    for (HUBContentOperationAppendInfo* appendInfo in sortedArray) {
-        
-        NSUInteger newOperationCount = appendInfo.contentOperations.count;
-        
-        if (newOperationCount < 1){
-            
-            continue;
-        }
-        
         // set action performer for each operation
-        for (id<HUBContentOperation> const operation in appendInfo.contentOperations) {
+        for (id<HUBContentOperation> const operation in operations) {
             if (![operation conformsToProtocol:@protocol(HUBContentOperationActionPerformer)]) {
                 continue;
             }
             
             ((id<HUBContentOperationActionPerformer>)operation).actionPerformer = self.actionPerformer;
         }
+    }
+    
+/**
+ *  Sorts operationAppendInfo in descending order of operation index
+ *
+ */
+- (NSArray<HUBContentOperationAppendInfo *>*)sortedOperationAppendInfo {
         
-        NSUInteger operationIndex = appendInfo.contentOperationIndex;
-        // if operations are to be inserted at an index that doesn't exist
-        // currently, just addobjects directly
-        if ( operationIndex+ 1 > self.contentOperations.count-1)
-        {
-            [_contentOperations addObjectsFromArray:appendInfo.contentOperations];
+        NSArray<HUBContentOperationAppendInfo *>* sortedAppendInfo;
+        
+        if (self.contentOperationAppendQueue.count == 1) {
+            
+            sortedAppendInfo = self.contentOperationAppendQueue;
         }
-        else
-        {
-            
-            NSIndexSet *indexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(operationIndex + 1, operationIndex + newOperationCount)];
-            
-            
-            // insert new operations
-            [_contentOperations insertObjects:appendInfo.contentOperations atIndexes:indexSet];
+        else {
+            sortedAppendInfo = [self.contentOperationAppendQueue sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+                NSUInteger first = [(HUBContentOperationAppendInfo*)a contentOperationIndex];
+                NSUInteger second = [(HUBContentOperationAppendInfo*)b contentOperationIndex];
+                if (first > second){
+                    return (NSComparisonResult)NSOrderedAscending;
+                }
+                else {
+                    return (NSComparisonResult)NSOrderedDescending;
+                }
+            }];
         }
         
-        // now change the indexes for contentOperationWrappers
-        // get all the wrappers with an index > operationIndex
-        NSArray<HUBContentOperationWrapper*> *resultArray = [[self.contentOperationWrappers allValues] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"index > %u", operationIndex]];
+        return sortedAppendInfo;
+    }
+    
+    - (NSArray<HUBContentOperationWrapper*>*) sortedOperationWrappers:(NSUInteger)afterIndex
+    {
+    
+        // get all the wrappers with an index > afterIndex
+        NSArray<HUBContentOperationWrapper*> *resultArray = [[self.contentOperationWrappers allValues] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"index > %u", afterIndex]];
         
-        NSArray<HUBContentOperationWrapper*> *sortedOperationWrapperArray;
-        sortedOperationWrapperArray = [resultArray sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+        if (resultArray.count < 2)
+        {
+            
+            return resultArray;
+        }
+        
+        NSArray<HUBContentOperationWrapper*> *sortedOperationWrappers;
+        
+        sortedOperationWrappers = [resultArray sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
             NSUInteger first = [(HUBContentOperationWrapper*)a index];
             NSUInteger second = [(HUBContentOperationWrapper*)b index];
             if (first > second){
@@ -522,14 +508,83 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
             }
         }];
         
+        return sortedOperationWrappers;
+    
+    }
+
+- (void)appendOperations
+
+{
+    if (self.contentOperationAppendQueue.count == 0) {
+        
+        return;
+    }
+    
+    //sort the array in descending order of operation index so that we can shift the
+    //original indexes accurately
+    
+    NSArray<HUBContentOperationAppendInfo *> *sortedAppendInfo = [self sortedOperationAppendInfo];
+   
+    // last item in array is for the content operaton with the lowest index
+    // this is the index from where we'll reschedule operations
+    NSUInteger minIndex =  sortedAppendInfo.lastObject.contentOperationIndex;
+    
+    for (HUBContentOperationAppendInfo* appendInfo in sortedAppendInfo) {
+        
+        NSUInteger newOperationCount = appendInfo.contentOperations.count;
+        
+        if (newOperationCount < 1){
+            
+            continue;
+        }
+        
+        // set action performer for each operation
+        [self setActionPerformer:self.actionPerformer forOperations:appendInfo.contentOperations];
+
+        
+        NSUInteger operationIndex = appendInfo.contentOperationIndex;
+        
+        // if operations are to be inserted at an index that doesn't exist
+        // currently, just add objects directly
+        if ( operationIndex + 1 > self.contentOperations.count-1)
+        {
+            [[self contentOperations] addObjectsFromArray:appendInfo.contentOperations];
+        }
+        else
+        {
+            
+            NSIndexSet *indexSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(operationIndex + 1, operationIndex + newOperationCount)];
+            
+            
+            // insert new operations
+            [[self contentOperations] insertObjects:appendInfo.contentOperations atIndexes:indexSet];
+        }
+        
+        // now change the indexes for contentOperationWrappers
+        // get all the wrappers with an index > operationIndex
+//        NSArray<HUBContentOperationWrapper*> *resultArray = [[self.contentOperationWrappers allValues] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"index > %u", operationIndex]];
+//        
+//        NSArray<HUBContentOperationWrapper*> *sortedOperationWrapperArray;
+//        sortedOperationWrapperArray = [resultArray sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+//            NSUInteger first = [(HUBContentOperationWrapper*)a index];
+//            NSUInteger second = [(HUBContentOperationWrapper*)b index];
+//            if (first > second){
+//                return (NSComparisonResult)NSOrderedAscending;
+//            }
+//            else {
+//                return (NSComparisonResult)NSOrderedDescending;
+//            }
+//        }];
+        
+        NSArray<HUBContentOperationWrapper*> *sortedOperationWrappers = [self sortedOperationWrappers:operationIndex];
+        
         //change index and key in operationWrapper
         
-        for (HUBContentOperationWrapper* operationWrapper in sortedOperationWrapperArray) {
+        for (HUBContentOperationWrapper* operationWrapper in sortedOperationWrappers) {
             
             [self.contentOperationWrappers removeObjectForKey:@(operationWrapper.index)];
-            //TODO
             
-            NSUInteger newIndex = operationWrapper.index+newOperationCount;
+            NSUInteger newIndex = operationWrapper.index + newOperationCount;
             
             [operationWrapper updateOperationIndex:newIndex];
             
@@ -537,68 +592,73 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
             
         }
         
-        // change key for builderSnapshots
-        // get all the builderSnapshots with an index > operationIndex
-        NSArray<NSNumber *> *filteredBuilderSnapshotKeys = [[self.builderSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", operationIndex]];
+        // shift items for builderSnapshots
+        [self shiftItemsFor:self.builderSnapshots fromIndex:operationIndex by:newOperationCount];
         
-        NSArray<NSNumber *> *sortedBuilderSnapshotKeys;
-        sortedBuilderSnapshotKeys = [filteredBuilderSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-            NSNumber* first = (NSNumber*)a;
-            NSNumber* second = (NSNumber*)b;
-            if (first > second){
-                return (NSComparisonResult)NSOrderedAscending;
-            }
-            else {
-                return (NSComparisonResult)NSOrderedDescending;
-            }
-        }];
+//        // get all the builderSnapshots with an index > operationIndex
+//        NSArray<NSNumber *> *filteredBuilderSnapshotKeys = [[self.builderSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", operationIndex]];
+//        
+//        NSArray<NSNumber *> *sortedBuilderSnapshotKeys;
+//        sortedBuilderSnapshotKeys = [filteredBuilderSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+//            NSNumber* first = (NSNumber*)a;
+//            NSNumber* second = (NSNumber*)b;
+//            if (first > second){
+//                return (NSComparisonResult)NSOrderedAscending;
+//            }
+//            else {
+//                return (NSComparisonResult)NSOrderedDescending;
+//            }
+//        }];
+//        
+//        
+//        for (NSNumber *key in sortedBuilderSnapshotKeys) {
+//            
+//            NSUInteger keyValue = [key unsignedIntegerValue];
+//            
+//            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
+//            
+//            HUBViewModelBuilderImplementation * builder = self.builderSnapshots[key];
+//            
+//            self.builderSnapshots[index] = builder;
+//            
+//            [self.builderSnapshots removeObjectForKey:index];
+//            
+//            
+//        }
         
+        // shift items for errorSnapshots
+        [self shiftItemsFor:self.errorSnapshots fromIndex:operationIndex by:newOperationCount];
         
-        for (NSNumber *key in sortedBuilderSnapshotKeys) {
-            
-            NSUInteger keyValue = [key unsignedIntegerValue];
-            
-            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
-            
-            HUBViewModelBuilderImplementation * builder = self.builderSnapshots[key];
-            
-            self.builderSnapshots[index] = builder;
-            
-            [self.builderSnapshots removeObjectForKey:index];
-            
-            
-        }
-        
-        // change key for errorSnapshots
-        // get all the builderSnapshots with an index > operationIndex
-        NSArray<NSNumber *> *filteredErrorSnapshotKeys = [[self.errorSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", operationIndex]];
-        
-        NSArray<NSNumber *> *sortedErrorSnapshotKeys;
-        sortedErrorSnapshotKeys = [filteredErrorSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
-            NSNumber* first = (NSNumber*)a;
-            NSNumber* second = (NSNumber*)b;
-            if (first > second){
-                return (NSComparisonResult)NSOrderedAscending;
-            }
-            else {
-                return (NSComparisonResult)NSOrderedDescending;
-            }
-        }];
-        
-        
-        for (NSNumber *key in sortedErrorSnapshotKeys) {
-            
-            NSUInteger keyValue = [key unsignedIntegerValue];
-            
-            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
-            
-            NSError * error = self.errorSnapshots[key];
-            
-            self.errorSnapshots[index] = error;
-            
-            [self.errorSnapshots removeObjectForKey:index];
-            
-        }
+//        // change key for errorSnapshots
+//        // get all the builderSnapshots with an index > operationIndex
+//        NSArray<NSNumber *> *filteredErrorSnapshotKeys = [[self.errorSnapshots allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", operationIndex]];
+//        
+//        NSArray<NSNumber *> *sortedErrorSnapshotKeys;
+//        sortedErrorSnapshotKeys = [filteredErrorSnapshotKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+//            NSNumber* first = (NSNumber*)a;
+//            NSNumber* second = (NSNumber*)b;
+//            if (first > second){
+//                return (NSComparisonResult)NSOrderedAscending;
+//            }
+//            else {
+//                return (NSComparisonResult)NSOrderedDescending;
+//            }
+//        }];
+//        
+//        
+//        for (NSNumber *key in sortedErrorSnapshotKeys) {
+//            
+//            NSUInteger keyValue = [key unsignedIntegerValue];
+//            
+//            NSNumber* index = [NSNumber numberWithUnsignedInteger:keyValue+newOperationCount];
+//            
+//            NSError * error = self.errorSnapshots[key];
+//            
+//            self.errorSnapshots[index] = error;
+//            
+//            [self.errorSnapshots removeObjectForKey:index];
+//            
+//        }
         
         
     }
@@ -608,6 +668,38 @@ NSMutableArray<id<HUBContentOperation>> * _contentOperations;
     
 }
 
+    -(void)shiftItemsFor:(NSMutableDictionary *)dictionary fromIndex:(NSUInteger)index by:(NSUInteger)count {
+        
+        
+        // get all the keys with an index > operationIndex
+        NSArray<NSNumber *> *filteredKeys = [[dictionary allKeys] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self > %u", index]];
+        
+        NSArray<NSNumber *> *sortedKeys;
+        sortedKeys = [filteredKeys sortedArrayUsingComparator: descendingKeyComparator];
+        
+//        sortedKeys = [filteredKeys sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+//            NSNumber* first = (NSNumber*)a;
+//            NSNumber* second = (NSNumber*)b;
+//            if (first > second){
+//                return (NSComparisonResult)NSOrderedAscending;
+//            }
+//            else {
+//                return (NSComparisonResult)NSOrderedDescending;
+//            }
+//        }];
+        
+        
+        for (NSNumber *key in sortedKeys) {
+            
+            NSUInteger keyValue = [key unsignedIntegerValue];
+            
+            NSNumber* newIndex = [NSNumber numberWithUnsignedInteger:keyValue + count];
+            
+            dictionary[newIndex] = dictionary[key];
+            [dictionary removeObjectForKey: key];
+            
+        }
+    }
 
 @end
 

@@ -26,8 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation HUBContentOperationAppendInfo
 
-- (instancetype)initWithContentOperations:(NSUInteger)contentOperationIndex
-                        contentOperations:(NSArray<id<HUBContentOperation>> *)contentOperations
+- (instancetype) initWithContentOperations:(NSArray<id<HUBContentOperation>> *)contentOperations forIndex:(NSUInteger)contentOperationIndex
 {
     self = [super init];
     

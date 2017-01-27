@@ -43,11 +43,10 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  *  Initialize an instance of this class
  *
+ *  @param contentOperations New operations to append to content chain
  *  @param contentOperationIndex The index of the content operation after which new operations should be appended
- *  @param contentOperations The mode to execute the content operation in
  */
-- (instancetype)initWithContentOperations:(NSUInteger)contentOperationIndex
-                                 contentOperations:(NSArray<id<HUBContentOperation>> *)contentOperations HUB_DESIGNATED_INITIALIZER;
+- (instancetype) initWithContentOperations:(NSArray<id<HUBContentOperation>> *)contentOperations forIndex:(NSUInteger)contentOperationIndex HUB_DESIGNATED_INITIALIZER;
 
 @end
 

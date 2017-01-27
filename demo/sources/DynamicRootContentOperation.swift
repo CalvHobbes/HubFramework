@@ -13,7 +13,11 @@ import HubFramework
 class DynamicRootContentOperation: NSObject, HUBContentOperation {
     weak var delegate: HUBContentOperationDelegate?
     
-    var  dynamicContentLoaded = false
+  
+     var  dynamicContentLoaded = false
+    
+    var rescheduled = false
+    
 
     func perform(forViewURI viewURI: URL,
                  featureInfo: HUBFeatureInfo,
@@ -21,14 +25,36 @@ class DynamicRootContentOperation: NSObject, HUBContentOperation {
                  viewModelBuilder: HUBViewModelBuilder,
                  previousError: Error?) {
         
+        
+//        if (rescheduled)
+//        {
 //        viewModelBuilder.navigationBarTitle = "Dynamic Hub Framework Demo App"
 //        let rowBuilder = viewModelBuilder.builderForBodyComponentModel(withIdentifier: DefaultComponentNames.row)
 //        rowBuilder.title = "Dynamic Operation Loader"
 //        rowBuilder.subtitle = "A feature that enables you to add operations asynchronously"
-        
+//            
+//            delegate?.contentOperationDidFinish(self)
+//            return
+//        }
+       
+
         guard dynamicContentLoaded == false else {
-            
+     
+      
                viewModelBuilder.setCustomDataValue(false, forKey: GitHubSearchCustomDataKeys.searchInProgress)
+            
+//             DispatchQueue.background.after(2, execute: { [weak self] in
+//                
+//                guard let `self` = self else {
+//                    
+//                    return
+//                }
+//                self.rescheduled = true
+//                
+//                self.delegate?.contentOperationRequiresRescheduling(self)
+//                
+//                })
+            
             delegate?.contentOperationDidFinish(self)
             return
         }
@@ -44,6 +70,7 @@ class DynamicRootContentOperation: NSObject, HUBContentOperation {
                 return
             }
             
+           
             self.dynamicContentLoaded = true
             let operations = [RootContentOperation()]
             self.delegate?.contentOperationHasNewOperations(self, operations: operations)
