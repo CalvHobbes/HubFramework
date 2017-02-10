@@ -25,57 +25,41 @@ class DynamicRootContentOperation: NSObject, HUBContentOperation {
                  viewModelBuilder: HUBViewModelBuilder,
                  previousError: Error?) {
         
-        
-//        if (rescheduled)
-//        {
-//        viewModelBuilder.navigationBarTitle = "Dynamic Hub Framework Demo App"
-//        let rowBuilder = viewModelBuilder.builderForBodyComponentModel(withIdentifier: DefaultComponentNames.row)
-//        rowBuilder.title = "Dynamic Operation Loader"
-//        rowBuilder.subtitle = "A feature that enables you to add operations asynchronously"
-//            
-//            delegate?.contentOperationDidFinish(self)
-//            return
-//        }
        
 
         guard dynamicContentLoaded == false else {
      
       
-               viewModelBuilder.setCustomDataValue(false, forKey: GitHubSearchCustomDataKeys.searchInProgress)
-            
-//             DispatchQueue.background.after(2, execute: { [weak self] in
-//                
-//                guard let `self` = self else {
-//                    
-//                    return
-//                }
-//                self.rescheduled = true
-//                
-//                self.delegate?.contentOperationRequiresRescheduling(self)
-//                
-//                })
+            viewModelBuilder.setCustomDataValue(false, forKey: GitHubSearchCustomDataKeys.searchInProgress)
+
             
             delegate?.contentOperationDidFinish(self)
             return
         }
-//        // Add an activity indicator overlay component
-//        let activityIndicatorBuilder = viewModelBuilder.builderForOverlayComponentModel(withIdentifier: "activityIndicator")
-//        activityIndicatorBuilder.componentName = DefaultComponentNames.activityIndicator
-          viewModelBuilder.setCustomDataValue(true, forKey: GitHubSearchCustomDataKeys.searchInProgress)
-        DispatchQueue.background.after(2, execute: { [weak self] in
         
+        getPageLayoutFromDCS()
+
+        viewModelBuilder.setCustomDataValue(true, forKey: GitHubSearchCustomDataKeys.searchInProgress)
+        
+        delegate?.contentOperationDidFinish(self)
+
+    }
+    
+    func getPageLayoutFromDCS() {
+        // code below mimics an async call to DCSService to fetch page layout
+        DispatchQueue.background.after(2, execute: { [weak self] in
+            
             
             guard let `self` = self else {
                 
                 return
             }
             
-           
+            
             self.dynamicContentLoaded = true
             let operations = [RootContentOperation()]
             self.delegate?.contentOperationHasNewOperations(self, operations: operations)
         })
-        delegate?.contentOperationDidFinish(self)
 
     }
 }

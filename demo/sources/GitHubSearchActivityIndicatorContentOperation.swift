@@ -22,11 +22,14 @@
 import Foundation
 import HubFramework
 
+
 /// Content operation that adds an activity indicator when loading results from the GitHub search API
 class GitHubSearchActivityIndicatorContentOperation: NSObject, HUBContentOperation {
     weak var delegate: HUBContentOperationDelegate?
 
     func perform(forViewURI viewURI: URL, featureInfo: HUBFeatureInfo, connectivityState: HUBConnectivityState, viewModelBuilder: HUBViewModelBuilder, previousError: Error?) {
+        
+
         // If no search is in progress, there's no need for an activity indicator
         guard viewModelBuilder.customData?[GitHubSearchCustomDataKeys.searchInProgress] as? Bool == true else {
             delegate?.contentOperationDidFinish(self)

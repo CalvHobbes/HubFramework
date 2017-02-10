@@ -526,6 +526,8 @@
     XCTAssertNotNil(self.viewModelFromSuccessDelegateMethod);
 }
 
+
+
 - (void)testSameConnectivityStateSentToAllContentOperations
 {
     self.connectivityStateResolver.state = HUBConnectivityStateOnline;
@@ -923,6 +925,242 @@
     XCTAssertEqual(componentModels.count, 2u);
     XCTAssertEqualObjects(componentModels[0].identifier, @"A-1");
     XCTAssertEqualObjects(componentModels[1].identifier, @"B-1");
+}
+
+- (void)testFirstContentOperationHasNewOperations
+{
+    HUBContentOperationMock * const contentOperationA = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationB = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationC = [HUBContentOperationMock new];
+    contentOperationA.paginatedContentLoadingBlock = ^(id<HUBViewModelBuilder> builder, NSUInteger pageIndex) {
+        XCTAssertEqual(pageIndex, 1u);
+        [builder builderForBodyComponentModelWithIdentifier:@"A-0"].title = @"Component from operation A";
+        return YES;
+    };
+    
+    contentOperationB.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"B-0"].title = @"Component from operation B";
+        return YES;
+    };
+    
+    contentOperationC.paginatedContentLoadingBlock = ^(id<HUBViewModelBuilder> builder, NSUInteger pageIndex) {
+        XCTAssertEqual(pageIndex, 1u);
+        [builder builderForBodyComponentModelWithIdentifier:@"C-0"].title = @"Component from operation C";
+        return YES;
+    };
+    
+    [self createLoaderWithContentOperations:@[contentOperationA, contentOperationC]
+                          connectivityState:HUBConnectivityStateOnline
+                           initialViewModel:nil];
+    
+    [self.loader loadViewModel];
+    [self.loader loadNextPageForCurrentViewModel];
+    
+    NSArray<id<HUBComponentModel>> * const initialComponentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(initialComponentModels.count, 2u);
+    XCTAssertEqualObjects(initialComponentModels[0].identifier, @"A-0");
+    XCTAssertEqualObjects(initialComponentModels[1].identifier, @"C-0");
+    
+    contentOperationA.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"A-1"].title = @"Component from rescheduled operation A";
+        return YES;
+    };
+    contentOperationC.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"C-1"].title = @"Component from rescheduled operation C";
+        return YES;
+    };
+    
+    
+   
+    [contentOperationA.delegate contentOperationHasNewOperations:contentOperationA operations:@[contentOperationB]];
+  
+    
+    
+    NSArray<id<HUBComponentModel>> * const componentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(componentModels.count, 3u);
+    XCTAssertEqualObjects(componentModels[0].identifier, @"A-1");
+    XCTAssertEqualObjects(componentModels[1].identifier, @"B-0");
+    XCTAssertEqualObjects(componentModels[2].identifier, @"C-1");
+}
+
+- (void)testMiddleContentOperationHasNewOperations
+{
+    HUBContentOperationMock * const contentOperationA = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationB = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationC = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationD = [HUBContentOperationMock new];
+    
+    
+    contentOperationA.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"A-0"].title = @"Component from operation A";
+        return YES;
+    };
+    
+    contentOperationB.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"B-0"].title = @"Component from operation B";
+        return YES;
+    };
+    
+    contentOperationC.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"C-0"].title = @"Component from operation C";
+        return YES;
+    };
+    
+    contentOperationD.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"D-0"].title = @"Component from operation D";
+        return YES;
+    };
+    
+    [self createLoaderWithContentOperations:@[contentOperationA, contentOperationB,contentOperationD]
+                          connectivityState:HUBConnectivityStateOnline
+                           initialViewModel:nil];
+    
+    [self.loader loadViewModel];
+    [self.loader loadNextPageForCurrentViewModel];
+    
+    NSArray<id<HUBComponentModel>> * const initialComponentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(initialComponentModels.count, 3u);
+    XCTAssertEqualObjects(initialComponentModels[0].identifier, @"A-0");
+    XCTAssertEqualObjects(initialComponentModels[1].identifier, @"B-0");
+     XCTAssertEqualObjects(initialComponentModels[2].identifier, @"D-0");
+    
+    contentOperationB.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"B-1"].title = @"Component from rescheduled operation B";
+        return YES;
+    };
+    contentOperationD.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"D-1"].title = @"Component from rescheduled operation D";
+        return YES;
+    };
+    
+    
+    
+    [contentOperationB.delegate contentOperationHasNewOperations:contentOperationB operations:@[contentOperationC]];
+    
+    
+    
+    NSArray<id<HUBComponentModel>> * const componentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(componentModels.count, 4u);
+    XCTAssertEqualObjects(componentModels[0].identifier, @"A-0");
+    XCTAssertEqualObjects(componentModels[1].identifier, @"B-1");
+    XCTAssertEqualObjects(componentModels[2].identifier, @"C-0");
+    XCTAssertEqualObjects(componentModels[3].identifier, @"D-1");
+}
+
+- (void)testLastContentOperationHasNewOperations
+{
+    HUBContentOperationMock * const contentOperationA = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationB = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationC = [HUBContentOperationMock new];
+    
+    contentOperationA.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"A-0"].title = @"Component from operation A";
+        return YES;
+    };
+    
+    contentOperationB.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"B-0"].title = @"Component from operation B";
+        return YES;
+    };
+    
+    contentOperationC.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"C-0"].title = @"Component from operation C";
+        return YES;
+    };
+    
+    [self createLoaderWithContentOperations:@[contentOperationA, contentOperationC]
+                          connectivityState:HUBConnectivityStateOnline
+                           initialViewModel:nil];
+    
+    [self.loader loadViewModel];
+    [self.loader loadNextPageForCurrentViewModel];
+    
+    NSArray<id<HUBComponentModel>> * const initialComponentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(initialComponentModels.count, 2u);
+    XCTAssertEqualObjects(initialComponentModels[0].identifier, @"A-0");
+    XCTAssertEqualObjects(initialComponentModels[1].identifier, @"C-0");
+    
+    contentOperationC.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"C-1"].title = @"Component from rescheduled operation C";
+        return YES;
+    };
+    
+    
+    
+    
+    [contentOperationC.delegate contentOperationHasNewOperations:contentOperationC operations:@[contentOperationB]];
+    
+    
+    
+    NSArray<id<HUBComponentModel>> * const componentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(componentModels.count, 3u);
+    XCTAssertEqualObjects(componentModels[0].identifier, @"A-0");
+    XCTAssertEqualObjects(componentModels[1].identifier, @"C-1");
+    XCTAssertEqualObjects(componentModels[2].identifier, @"B-0");
+}
+
+- (void)testHasNewOperationsWhenPreviousContentOperationHasErrors
+{
+    HUBContentOperationMock * const contentOperationA = [HUBContentOperationMock new];
+    HUBContentOperationMock * const contentOperationB = [HUBContentOperationMock new];
+    
+    HUBContentOperationMock * const contentOperationC = [HUBContentOperationMock new];
+    
+    contentOperationA.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+       
+        return NO;
+    };
+
+    contentOperationB.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"B-0"].title = @"Component from operation B";
+        return YES;
+    };
+    
+    contentOperationC.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"C-0"].title = @"Component from operation C";
+        return YES;
+    };
+    
+  
+    
+    [self createLoaderWithContentOperations:@[contentOperationA, contentOperationB]
+                          connectivityState:HUBConnectivityStateOnline
+                           initialViewModel:nil];
+    
+    [self.loader loadViewModel];
+    
+    // return error from operationA
+    NSError * const error = [NSError errorWithDomain:@"domain" code:7 userInfo:nil];
+    [contentOperationA.delegate contentOperation:contentOperationA didFailWithError:error];
+    
+    NSArray<id<HUBComponentModel>> * const initialComponentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(initialComponentModels.count, 1u);
+    XCTAssertEqualObjects(initialComponentModels[0].identifier, @"B-0");
+   
+    //contentOperationA block should have no effect since reload
+    // happens from contentOperationB
+    contentOperationA.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"A-1"].title = @"Component from rescheduled operation A";
+        return YES;
+    };
+
+    
+       contentOperationB.contentLoadingBlock = ^(id<HUBViewModelBuilder> builder) {
+        [builder builderForBodyComponentModelWithIdentifier:@"B-1"].title = @"Component from rescheduled operation B";
+        return YES;
+    };
+    
+    
+    
+    [contentOperationB.delegate contentOperationHasNewOperations:contentOperationB operations:@[contentOperationC]];
+    
+    
+    
+    NSArray<id<HUBComponentModel>> * const componentModels = self.viewModelFromSuccessDelegateMethod.bodyComponentModels;
+    XCTAssertEqual(componentModels.count, 2u);
+    XCTAssertEqualObjects(componentModels[0].identifier, @"B-1");
+    XCTAssertEqualObjects(componentModels[1].identifier, @"C-0");
+   
 }
 
 - (void)testIsLoading
