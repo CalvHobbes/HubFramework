@@ -23,36 +23,42 @@ import Foundation
 import HubFramework
 
 /// Content operation factory used for the "Root" feature
-class RootContentOperationFactory: NSObject, HUBContentOperationFactory {
+class RootContentOperationFactory: HUBContentOperationFactory {
     func createContentOperations(forViewURI viewURI: URL) -> [HUBContentOperation] {
-         return [RootContentOperation()]
+        //  return [RootContentOperation()]
         // Uncomment code below to test DynamicOperation
-//       
-//        let headerOp :HUBBlockContentOperation =  HUBBlockContentOperation { (operationContext: HUBContentOperationContext) in
-//            
-//            let viewModelBuilder = operationContext.viewModelBuilder
-//            let headerBuilder = viewModelBuilder.headerComponentModelBuilder
-//            headerBuilder.componentName = DefaultComponentNames.header
-//            headerBuilder.title = "A sticky header!"
-//            headerBuilder.backgroundImageURL = URL(string: "https://spotify.github.io/HubFramework/resources/getting-started-gothenburg.jpg")
-//        }
-//        
-//        let staticOp :HUBBlockContentOperation =  HUBBlockContentOperation { (operationContext: HUBContentOperationContext) in
-//            
-//            let viewModelBuilder = operationContext.viewModelBuilder
-//            
-//            let startIndex = 1
-//            let endIndex = 2
-//            
-//            (startIndex...endIndex).forEach { index in
-//                let rowBuilder = viewModelBuilder.builderForBodyComponentModel(withIdentifier: "row-\(index)")
-//                rowBuilder.title = "Static Row number \(index)"
-//            }
-//            
-//        }
-//
-//        
-//        
-//        return [headerOp, DynamicRootContentOperation(),GitHubSearchActivityIndicatorContentOperation(),staticOp]
+        return getDynamicOperations()
+    
+
+    }
+    
+    
+    func getDynamicOperations()->[HUBContentOperation] {
+        
+        let headerOp :HUBBlockContentOperation =  HUBBlockContentOperation { (operationContext: HUBContentOperationContext) in
+
+            let viewModelBuilder = operationContext.viewModelBuilder
+            let headerBuilder = viewModelBuilder.headerComponentModelBuilder
+            headerBuilder.componentName = DefaultComponentNames.header
+            headerBuilder.title = "A sticky header!"
+            headerBuilder.backgroundImageURL = URL(string: "https://spotify.github.io/HubFramework/resources/getting-started-gothenburg.jpg")
+        }
+
+        let staticOp :HUBBlockContentOperation =  HUBBlockContentOperation { (operationContext: HUBContentOperationContext) in
+
+            let viewModelBuilder = operationContext.viewModelBuilder
+
+            let startIndex = 1
+            let endIndex = 2
+
+            (startIndex...endIndex).forEach { index in
+                let rowBuilder = viewModelBuilder.builderForBodyComponentModel(withIdentifier: "row-\(index)")
+                rowBuilder.title = "Static Row number \(index)"
+            }
+
+        }
+
+        
+        return [headerOp, DynamicRootContentOperation(),GitHubSearchActivityIndicatorContentOperation(),staticOp]
     }
 }

@@ -138,7 +138,7 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
 - (void)actionPerformedWithContext:(id<HUBActionContext>)context
 {
     for (id<HUBContentOperation> const operation in self.contentOperations) {
-        if (![operation conformsToProtocol:@protocol(HUBContentOperationActionObserver)]) {
+        if (!HUBConformsToProtocol(operation, @protocol(HUBContentOperationActionObserver))) {
             continue;
         }
         
@@ -171,7 +171,7 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
     HUBViewModelBuilderImplementation * const builder = [self createBuilder];
     
     for (id<HUBContentOperation> const operation in self.contentOperations) {
-        if ([operation conformsToProtocol:@protocol(HUBContentOperationWithInitialContent)]) {
+        if (HUBConformsToProtocol(operation, @protocol(HUBContentOperationWithInitialContent))) {
             id<HUBContentOperationWithInitialContent> const initialContentOperation = (id<HUBContentOperationWithInitialContent>)operation;
             [initialContentOperation addInitialContentForViewURI:self.viewURI toViewModelBuilder:builder];
         }
@@ -425,7 +425,7 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
     newOperationWrapper.delegate = self;
     self.contentOperationWrappers[@(operationIndex)] = newOperationWrapper;
     
-    if ([operation conformsToProtocol:@protocol(HUBContentOperationWithPaginatedContent)]) {
+    if (HUBConformsToProtocol(operation, @protocol(HUBContentOperationWithPaginatedContent))) {
         self.anyContentOperationSupportsPagination = YES;
     }
     
@@ -435,13 +435,13 @@ static NSComparator descendingKeyComparator = ^NSComparisonResult(id a, id b) {
 - (void)setActionPerformer:(nullable id<HUBActionPerformer>)actionPerformer forOperations:(NSArray<id<HUBContentOperation>> *)operations {
     
         // set action performer for each operation
-        for (id<HUBContentOperation> const operation in operations) {
-            if (![operation conformsToProtocol:@protocol(HUBContentOperationActionPerformer)]) {
-                continue;
-            }
-            
-            ((id<HUBContentOperationActionPerformer>)operation).actionPerformer = self.actionPerformer;
+         for (id<HUBContentOperation> const operation in operations) {
+        if (!HUBConformsToProtocol(operation, @protocol(HUBContentOperationActionPerformer))) {
+            continue;
         }
+        
+        ((id<HUBContentOperationActionPerformer>)operation).actionPerformer = actionPerformer;
+    }
     }
     
 /**

@@ -21,6 +21,7 @@
 
 #import "HUBContentOperationWrapper.h"
 #import "HUBContentOperationWithPaginatedContent.h"
+#import "HUBUtilities.h"
 
 @interface HUBContentOperationWrapper () <HUBContentOperationDelegate>
 
@@ -60,7 +61,7 @@
     self.isExecuting = YES;
     
     if (pageIndex != nil) {
-        if ([self.contentOperation conformsToProtocol:@protocol(HUBContentOperationWithPaginatedContent)]) {
+        if (HUBConformsToProtocol(self.contentOperation, @protocol(HUBContentOperationWithPaginatedContent))) {
             id<HUBContentOperationWithPaginatedContent> const paginatedOperation = (id<HUBContentOperationWithPaginatedContent>)self.contentOperation;
             
             [paginatedOperation appendContentForPageIndex:pageIndex.unsignedIntegerValue
